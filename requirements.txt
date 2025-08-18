@@ -8,6 +8,6 @@ timezonefinder
 geopy
 matplotlib
 React
-recharts
+
 
 
