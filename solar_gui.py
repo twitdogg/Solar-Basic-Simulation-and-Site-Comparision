@@ -1,16 +1,3 @@
-# Solar Versus — by Eyob Aga Muleta
-# Bright, clickable multi-page PV simulator:
-# Pages: 1) Locations, 2) Electrical sizing, 3) Geometry & losses, 4) Results
-# Highlights:
-# - Clickable step bar (tabs) to jump around instantly
-# - Site search or CSV, full IANA timezone dropdown or auto
-# - Manual overrides for total string count and inverter count
-# - Per-site pitch + table depth (or AUTO from module geometry and tilt)
-# - Terrain slope + grading
-# - Polished Plotly charts
-#
-# Run: streamlit run solar_versus.py
-
 import math
 import warnings
 warnings.filterwarnings("ignore")
@@ -40,39 +27,78 @@ from math import cos, radians, atan2, atan
 # ------------------------------ App config & styling ------------------------------
 st.set_page_config(page_title="Solar Versus — by Eyob Aga Muleta", layout="wide")
 
-PRIMARY = "#0ea5a6"
-ACCENT  = "#2563eb"
-BORDER  = "#e5e7eb"
-TEXT    = "#0f172a"
-BG      = "#ffffff"
+# Define a more modern, bright color palette
+PRIMARY = "#2563eb"  # A deep, professional blue
+ACCENT = "#34d399"   # A vibrant, lively green for highlights
+BG = "#f8f9fa"       # A subtle off-white for the background
+CARD_BG = "#ffffff"  # Pure white for cards to create contrast
+BORDER = "#e2e8f0"   # Light gray for borders
+TEXT = "#1f2937"     # A dark gray for body text
 
 CSS = f"""
 <style>
-.block-container {{ padding-top: 0.8rem; }}
-/* Bright header */
+/* Streamlit main container padding */
+.block-container {{ padding-top: 1.5rem; padding-bottom: 2rem; }}
+
+/* Bright, gradient header */
 .sv-hero {{
-  background: linear-gradient(90deg, {PRIMARY} 0%, #22c55e 100%);
-  color: white; padding: 18px 20px; border-radius: 14px; margin: 8px 0 14px 0;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+  background: linear-gradient(90deg, {PRIMARY} 0%, #2563eb 100%);
+  color: white;
+  padding: 2.5rem 2rem;
+  border-radius: 1rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  text-align: center;
 }}
-.sv-hero h1, .sv-hero small {{ color: white !important; margin: 0; }}
-/* Step tabs (clickable) */
-.sv-steps {{ display:flex; gap:8px; margin: 0 0 10px 0; }}
-.sv-step {{
-  background:#fff; border:1px solid {BORDER}; color:{TEXT}; font-weight:600;
-  padding:8px 12px; border-radius:12px; cursor:pointer; user-select:none;
+.sv-hero h1 {{ color: white !important; margin: 0; font-size: 2.5rem; font-weight: 700; }}
+.sv-hero small {{ color: rgba(255, 255, 255, 0.8) !important; font-size: 1rem; margin-top: 0.5rem; display: block; }}
+
+/* Step tabs (clickable buttons) */
+.stButton>button {{
+    background-color: {CARD_BG};
+    border: 1px solid {BORDER};
+    color: {TEXT};
+    font-weight: 600;
+    padding: 0.75rem 1.25rem;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease-in-out;
 }}
-.sv-step.active {{ border-color:{ACCENT}; color:{ACCENT}; box-shadow:0 0 0 2px rgba(37,99,235,0.10) inset; }}
+.stButton>button:hover {{
+    border-color: {ACCENT};
+    box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.2);
+}}
+.stButton>button:active {{
+    background-color: {BG};
+}}
+/* Specific styling for active tab */
+.stButton>button[data-testid="base-button-secondary"]:focus {{
+    border-color: {PRIMARY};
+    color: {PRIMARY};
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}}
+
 /* Cards */
 .sv-card {{
-  background: {BG}; border: 1px solid {BORDER}; border-radius: 14px; padding: 16px; margin-bottom: 12px;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.03);
+  background: {CARD_BG};
+  border: 1px solid {BORDER};
+  border-radius: 1rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.05);
 }}
-.sv-title {{ font-weight: 700; font-size: 16px; margin-bottom: 8px; color:{TEXT}; }}
+.sv-title {{ font-weight: 700; font-size: 1.25rem; margin-bottom: 1rem; color:{TEXT}; }}
+
 /* Footer */
-.sv-footer {{ text-align:center; color:#64748b; padding:18px 0 8px 0; font-size: 13px; border-top: 1px solid {BORDER}; margin-top: 12px; }}
-/* Dataframe hover */
-.dataframe tbody tr:hover {{ background-color: #f8fafc; }}
+.sv-footer {{
+  text-align: center;
+  color: #64748b;
+  padding: 1.5rem 0 1rem 0;
+  font-size: 0.8rem;
+  border-top: 1px solid {BORDER};
+  margin-top: 2rem;
+}}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -187,17 +213,15 @@ def grading_flag(slope_deg):
     return "major", "Steep slope. Plan for significant grading and higher civil costs."
 
 # ------------------------------ Header ------------------------------
-st.markdown('<div class="sv-hero"><h1>Solar Versus</h1><small>by Eyob Aga Muleta</small></div>', unsafe_allow_html=True)
+st.markdown('<div class="sv-hero"><h1>Solar Versus</h1><small>Your definitive solar energy simulator</small></div>', unsafe_allow_html=True)
 
 # ------------------------------ Clickable step bar ------------------------------
 PAGES = ["Locations", "Electrical sizing", "Geometry & losses", "Results"]
 cols = st.columns(len(PAGES))
 for i, label in enumerate(PAGES):
     with cols[i]:
-        active = "active" if st.session_state.active_page == label else ""
-        if st.button(label, use_container_width=True):
+        if st.button(label, use_container_width=True, type="secondary" if st.session_state.active_page != label else "primary"):
             st.session_state.active_page = label
-        st.markdown(f'<div class="sv-steps"><div class="sv-step {active}">{label}</div></div>', unsafe_allow_html=True)
 
 # ---------- tiny helper to compute derived sizing preview ----------
 def derived_sizing_preview():
@@ -321,19 +345,19 @@ elif st.session_state.active_page == "Electrical sizing":
         st.session_state.wind_coeff      = c4.number_input("Wind cooling coeff (°C per m/s)", 0.0, 5.0, st.session_state.wind_coeff, 0.1)
 
         m1, m2, m3 = st.columns(3)
-        st.session_state.dc_kw_target         = m1.number_input("Target total DC size (kWp)", 0.1, 2_000_000.0, st.session_state.dc_kw_target, 10.0)
-        st.session_state.modules_per_string   = m2.number_input("Modules per string", 1, 1000, st.session_state.modules_per_string, 1)
+        st.session_state.dc_kw_target        = m1.number_input("Target total DC size (kWp)", 0.1, 2_000_000.0, st.session_state.dc_kw_target, 10.0)
+        st.session_state.modules_per_string  = m2.number_input("Modules per string", 1, 1000, st.session_state.modules_per_string, 1)
         st.session_state.strings_per_inverter = m3.number_input("Strings per inverter", 1, 2000, st.session_state.strings_per_inverter, 1)
 
         o1, o2, o3, o4 = st.columns(4)
         st.session_state.override_total_strings = o1.checkbox("Override total strings", value=st.session_state.override_total_strings)
-        st.session_state.total_strings_manual   = o2.number_input("Total strings (manual)", 1, 10_000_000, st.session_state.total_strings_manual, 1, disabled=not st.session_state.override_total_strings)
-        st.session_state.override_inverter_count= o3.checkbox("Override inverter count", value=st.session_state.override_inverter_count)
-        st.session_state.inverter_count_manual  = o4.number_input("Inverters (manual)", 1, 10_000_000, st.session_state.inverter_count_manual, 1, disabled=not st.session_state.override_inverter_count)
+        st.session_state.total_strings_manual    = o2.number_input("Total strings (manual)", 1, 10_000_000, st.session_state.total_strings_manual, 1, disabled=not st.session_state.override_total_strings)
+        st.session_state.override_inverter_count = o3.checkbox("Override inverter count", value=st.session_state.override_inverter_count)
+        st.session_state.inverter_count_manual   = o4.number_input("Inverters (manual)", 1, 10_000_000, st.session_state.inverter_count_manual, 1, disabled=not st.session_state.override_inverter_count)
 
         i1, i2 = st.columns(2)
-        st.session_state.inv_kw_each     = i1.number_input("Inverter AC nameplate (kW each)", 1.0, 10_000.0, st.session_state.inv_kw_each, 1.0)
-        st.session_state.inv_eff         = i2.number_input("Nominal inverter efficiency (0–1)", 0.6, 0.999, st.session_state.inv_eff, 0.001)
+        st.session_state.inv_kw_each      = i1.number_input("Inverter AC nameplate (kW each)", 1.0, 10_000.0, st.session_state.inv_kw_each, 1.0)
+        st.session_state.inv_eff          = i2.number_input("Nominal inverter efficiency (0–1)", 0.6, 0.999, st.session_state.inv_eff, 0.001)
 
         # live preview
         ts, invs, dc_kw_act, ac_kw_name, dcac = derived_sizing_preview()
@@ -536,7 +560,7 @@ else:
             fig_sy = px.bar(
                 kpis_sy, x="Specific yield (kWh/kWp)", y="Site",
                 orientation="h", color="Site", text="Specific yield (kWh/kWp)",
-                color_discrete_sequence=px.colors.qualitative.Set2,
+                color_discrete_sequence=px.colors.qualitative.Plotly,
                 template="plotly_white", height=420
             )
             fig_sy.update_traces(textposition="outside")
@@ -556,7 +580,7 @@ else:
             monthly_all, x="MonthName", y="kWh", color="Site",
             barmode="group", category_orders={"MonthName": month_labels},
             labels={"kWh":"Energy (kWh)"},
-            color_discrete_sequence=px.colors.qualitative.Set2, template="plotly_white", height=440
+            color_discrete_sequence=px.colors.qualitative.Plotly, template="plotly_white", height=440
         )
         fig_month.update_yaxes(tickformat=",")
         fig_month.update_layout(legend_title="", margin=dict(l=10, r=10, t=10, b=10))
@@ -610,3 +634,4 @@ else:
 
 # ------------------------------ Footer ------------------------------
 st.markdown('<div class="sv-footer">Solar Versus © Eyob Aga Muleta — Built with pvlib, Plotly, and Streamlit</div>', unsafe_allow_html=True)
+
