@@ -610,4 +610,3 @@ else:
 
 # ------------------------------ Footer ------------------------------
 st.markdown('<div class="sv-footer">Solar Versus © Eyob Aga Muleta — Built with pvlib, Plotly, and Streamlit</div>', unsafe_allow_html=True)
-
